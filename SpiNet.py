@@ -128,7 +128,7 @@ def log_vulns(vulns):
 
 
 def main():
-    print(f"[{datetime.now(TIME_ZONE)}] Starting SpiNet scan...")
+    print(f"[{datetime.now(ZoneInfo(TIME_ZONE))}] Starting SpiNet scan...")
     baseline=load_baseline()
     current=scan_network()
     print(f"Found {len(current)} device(s) on the network.")
