@@ -32,7 +32,7 @@ def scan_network():
 
 def check_vulnerabilities(host_ip):
     nm = nmap.PortScanner()
-    nm.scan(host_ip, arguments='-sV --script vuln') # Runs nmap's vulnerability scanning scripts
+    nm.scan(host_ip, arguments='-sV --script=default,vuln') # Runs nmap's vulnerability scanning scripts
     vulns=[]
     # Iterate through every protocol (usually just tcp)
     for proto in nm[host_ip].all_protocols():
