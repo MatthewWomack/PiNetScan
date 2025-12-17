@@ -11,7 +11,7 @@ NETWORK_RANGE = ''              # IP address range on local network
 EMAIL_TO = ''                   # Your email
 EMAIL_FROM = ''                 # Setup an email for the pi
 SMPT_SRVR = 'smtp.gmail.com'    # SMTP server for gmail
-SMTP_PORT = 587                 # Uses TLS
+SMTP_PORT = 465                 # Uses SSL
 SMTP_PASS = ''                  # Setup an app password
 TIME_ZONE = ''                  # Current time zone (for keeping logs)
 
