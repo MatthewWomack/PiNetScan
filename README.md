@@ -1,101 +1,118 @@
 # SpiNet
+***
+SpiNet is a lightweight network monitoring and vulnerability scanner built for the Raspberry Pi. It scans your local network for connected devices, detects new or unauthorized devices by comparing against a previous baseline, checks for known vulnerabilities using Nmap's scripting engine, and sends email alerts when issues are found.
 
-SpiNet is a lightweight, customizable network monitoring and vulnerability scanner designed to run on a Raspberry Pi (tested on Raspberry Pi 3 and newer). It periodically scans your local network, detects new or rogue devices by comparing against a stored baseline, performs basic vulnerability checks using Nmap's scripting engine, and sends email alerts when suspicious activity is detected.
-
-Great as a standalone home network watchdog or as a building block for a larger Raspberry Pi security hub.
+All activity is logged with timestamps for easy review.
 
 ## Features
-
-- Host discovery across your local network
-- Detection of new devices (potential unauthorized connections)
-- Basic vulnerability detection using Nmap NSE vulnerability scripts
-- Email alerts for new devices and detected vulnerabilities
-- Persistent baseline (JSON file) for reliable change detection
-- Console logging for real-time monitoring and debugging
-- Low resource usage – runs comfortably 24/7 on a Raspberry Pi 3
+---
+- Host discovery (ping scan) across your local network
+- Detection of new devices compared to a stored baseline
+- Vulnerability scanning using Nmap NSE vuln scripts
+- Email alerts for:
+  - New devices detected
+  - Vulnerabilities discovered
+- Timestamped logging of:
+  - Network changes (`network_activity.log`)
+  - Vulnerabilities (`network_vulnerability.log`)
+- Timezone-aware logging
+- Single-run execution (ideal for scheduling via cron)
 
 ## Requirements
-
-- Raspberry Pi with Raspberry Pi OS (Lite recommended for headless use)
+___
+- Raspberry Pi running Raspberry Pi OS
 - Python 3
-- Nmap
-- Internet access (for setup and sending email alerts)
+- Nmap installed
+- Internet access for sending email alerts
 
 ## Installation
 
 1. Update your system
    ```bash
    sudo apt update && sudo apt upgrade -y
-
+   ```
 2. Install dependencies
+   ```bash
    sudo apt install nmap python3-pip -y
    pip3 install python-nmap
-
+   ```
 3. Create the project directory and script
+   ```bash
    mkdir ~/SpiNet && cd ~/SpiNet
    nano spinet.py
+   ```
 Paste the script code and save
 
 ## Configuration
 
-Edit the configuration variables near the top of spinet.py:
-- Network: Your local subnet (e.g., '192.168.1.0/24')
-- Email Settings (Gmail example):
-    SMTP_SERVER = 'smtp.gmail.com'
-    SMTP_PORT = 587
-    SMTP_USER = 'your@gmail.com'
-    SMTP_PASS = 'your-16-character-app-password'
-Gmail Setup Tip:
-- Enable 2-Step Verification on your Google account.
-- Generate an App Password at https://myaccount.google.com/apppasswords.
-- Use the generated 16-character password (never your regular password).
+Edit the configuration variables near the top of ==spinet.py==:
+    ```python
+    NETWORK_RANGE = '192.168.1.0/24'     # Your local network range
+    EMAIL_TO = 'you@example.com'        # Where alerts are sent
+    EMAIL_FROM = 'pi-alerts@example.com' # Sender (Gmail address)
+    SMPT_SRVR = 'smtp.gmail.com'        # Usually leave as-is for Gmail
+    SMTP_PORT = 587                     # Standard for TLS
+    SMTP_PASS = 'your-16-char-app-password'  # Gmail App Password
+    TIME_ZONE = 'America/New_York'      # e.g., 'Europe/London', 'Asia/Tokyo' (see note below)
+    ```
 
-Security Note: For long-term use, consider moving credentials to environment variables or a separate config file instead of hardcoding them.
+### Gmail Setup (Recommended)
+- Enable 2-Step Verification on your Google account.
+- Go to: https://myaccount.google.com/apppasswords
+- Generate an App Password (select "Mail" or "Custom").
+- Use that 16-character password as ==SMTP_PASS==.
+
+### Time Zone
+Set ==TIME_ZONE== to a valid IANA time zone name (e.g., =='America/Los_Angeles'==, =='Europe/Paris'==).
+List available zones with: 
+    ```python
+    python3 -c "from zoneinfo import available_timezones; print(sorted(available_timezones()))"
+    ```
+Leave blank (==''==) to use system default time.
 
 ## Running SpiNet
 
-Manual Test Run
+### Manual Test Run
+    ```bash
     python3 spinet.py
-(Press Ctrl+C to stop)
+    ```
+This performs one full scan cycle and exits.
 
-Scheduling with Cron (Recommended)
-
+### Scheduling with Cron (Recommended)
 Option 1: Run continuously on boot (ideal for frequent scans)
-
-The script uses an infinite loop with time.sleep(). Start it automatically:
-    Bashcrontab -e
-
-Add this line:
-    text@reboot /usr/bin/python3 /home/pi/SpiNet/spinet.py >> /home/pi/SpiNet/spinet.log 2>&1
-
-This launches SpiNet on every reboot and logs output to spinet.log.
-
-Option 2: Periodic scheduled runs
-
-If you prefer discrete scans (e.g., every 30 minutes), modify the script to run once (remove the infinite loop) or add a command-line flag.
-
-Then schedule:
-    Bashcrontab -e
-
-Add:
-    text*/30 * * * * /usr/bin/python3 /home/pi/SpiNet/spinet.py >> /home/pi/SpiNet/spinet.log 2>&1
+Since the script runs once and exits, it's perfect for cron scheduling.
+Edit your crontab:
+    ```bash
+    crontab -e
+    ```
+**Examples:**
+- Every 15 minutes:
+    ```text
+    */15 * * * * /usr/bin/python3 /home/pi/SpiNet/spinet.py >> /home/pi/SpiNet/spinet.log 2>&1
+    ```
+- Every hour:
+    ```text
+    0 * * * * /usr/bin/python3 /home/pi/SpiNet/spinet.py >> /home/pi/SpiNet/spinet.log 2>&1
+    ```
+- Twice a day (8 AM and 8 PM):
+    ```text
+    0 8,20 * * * /usr/bin/python3 /home/pi/SpiNet/spinet.py >> /home/pi/SpiNet/spinet.log 2>&1
+    ```
 
 ## Files Generated
-
-- baseline.json – Stores the last known network state
-- spinet.log (optional) – Log file when output is redirected
-
-## Customization Ideas
-
-- Replace email alerts with Telegram, Discord, or Pushover notifications
-- Add a Flask web dashboard for viewing results
-- Store historical scans in SQLite
-- Whitelist trusted devices to reduce false positives
-- Include MAC vendor lookup for better device identification
+- ==baseline.json== – Stores the last known network state (automatically managed)
+- ==network_activity.log== – Log of new device detections with timestamps
+- ==network_vulnerability.log== – Log of discovered vulnerabilities
+- ==spinet.log== (optional) – Console output when run via cron
 
 ## Important Notes
+- **Only scan networks you own or have explicit permission to scan.**
+- Nmap ==--script vuln== can be noisy and may trigger alerts on some networks - use responsibly.
+- The first run will establish the baseline (no "new device" alerts on first execution).
+- Test email delivery with a manual run before relying on alerts.
 
-- Only scan networks you own or have explicit permission to scan.
-- Nmap vulnerability scripts can generate network traffic – use responsibly.
-- Adjust scan parameters for larger networks to avoid overloading the Pi.
-- Test email configuration separately before relying on alerts.
+## Future Ideas
+- Add device whitelisting to reduce false positives
+- Telegram or Pushover notifications
+- Web dashboard for viewing logs
+- MAC address vendor lookup for better device identification
