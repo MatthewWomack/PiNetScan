@@ -10,8 +10,8 @@ from tqdm import tqdm
 NETWORK_RANGE = ''              # IP address range on local network
 EMAIL_TO = ''                   # Your email
 EMAIL_FROM = ''                 # Setup an email for the pi
-SMPT_SRVR = 'smtp.gmail.com'    # SMTP server for gmail
-SMTP_PORT = 465                 # Uses SSL
+SMPT_SRVR = ''                  # SMTP server
+SMTP_PORT = ''                  # SMTP Port
 SMTP_PASS = ''                  # Setup an app password
 TIME_ZONE = ''                  # Current time zone (for keeping logs)
 
@@ -30,7 +30,8 @@ def scan_network():
     return hosts
 
 
-def check_vulnerabilities(host_ip):
+def check_vulnerabilities(host):
+    host_ip=host['ip']
     nm = nmap.PortScanner()
     nm.scan(host_ip, arguments='--script=vuln') # Runs nmap's vulnerability scanning scripts
     vulns=[]
@@ -45,11 +46,11 @@ def check_vulnerabilities(host_ip):
                     # Only include vulnerability-related scripts
                     if 'vuln' in script_id.lower():
                         # Append the vulnerability found and on which port it was found
-                        vulns.append(f"Port {port}: {output}")
+                        vulns.append(f"\nPort {port}: {output}")
     # Log vulnerabilities and send an email alert
     if vulns:
         log_vulns(vulns)
-        alert_msg=f"Vulnerabilities have been discovered on the network: {vulns}"
+        alert_msg=f"Vulnerabilities have been discovered on {host.hostname()}: {vulns}"
         send_alert("Vulnerabilities Found", alert_msg)
 
 
@@ -80,7 +81,7 @@ def detect_changes(current, baseline):
     # If any current host was not previously connected to the network, add it to the list
     for h in current:
         if h['ip'] not in old_hosts:
-            new_hosts.append(h)
+            new_hosts.append(f"\n{h.hostname()}: {h}")
     
     # If new host list is not empty, alert the user
     if new_hosts:
@@ -140,7 +141,7 @@ def main():
     if current:
         print(f"Starting vulnerability scans on {len(current)} device(s)...")
         for host in tqdm(current, desc="Scanning", unit="device"):
-            check_vulnerabilities(host['ip'])
+            check_vulnerabilities(host)
         print("All scans complete!")
     else:
         print("No devices found on the network.")
