@@ -39,7 +39,7 @@ def check_vulnerabilities(host):
     hostname = host['hostname'] if host['hostname'] else "Unknown"
     
     nm = nmap.PortScanner()
-    nm.scan(host_ip, arguments='-sV --script vuln')
+    nm.scan(host_ip, arguments='-sV --script vuln -p 21-23,25,53,80,110,143,443,445,3306,3389,8080')
     vulns = []
     
     for proto in nm[host_ip].all_protocols():
@@ -50,7 +50,6 @@ def check_vulnerabilities(host):
                         vulns.append(f"Port {port}: {output.strip()}")
 
     if vulns:
-        # Build a nice multi-line message
         header = f"Vulnerabilities discovered on device:\nIP: {host_ip} | Hostname: {hostname}\n"
         vuln_details = "\n".join(vulns)
         alert_msg = header + "\n" + vuln_details
@@ -59,30 +58,7 @@ def check_vulnerabilities(host):
         print(alert_msg)
         
         log_vulns(f"Device: {host_ip} ({hostname})\n" + "\n".join(vulns))
-"""
-def check_vulnerabilities(host):
-    host_ip=host['ip']
-    nm = nmap.PortScanner()
-    nm.scan(host_ip, arguments='-sV --script=vuln') # Runs nmap's vulnerability scanning scripts
-    vulns=[]
-    # Iterate through every protocol (usually just tcp)
-    for proto in nm[host_ip].all_protocols():
-        # Iterate through every port
-        for port in nm[host_ip][proto]:
-            # For each port, Nmap may have run NSE (Nmap Scripting Engine) scripts
-            if 'script' in nm[host_ip][proto][port]:
-                # Loop through each script that was run on the port
-                for script_id, output in nm[host_ip][proto][port]['script'].items():
-                    # Only include vulnerability-related scripts
-                    if 'vuln' in script_id.lower():
-                        # Append the vulnerability found and on which port it was found
-                        vulns.append(f"\nPort {port}: {output}")
-    # Log vulnerabilities and send an email alert
-    if vulns:
-        log_vulns(vulns)
-        alert_msg=f"Vulnerabilities have been discovered on the network: {vulns}"
-        send_alert("Vulnerabilities Found", alert_msg)
-"""
+
 
 def load_baseline():
     try:
@@ -117,7 +93,9 @@ def detect_changes(current, baseline):
     if new_hosts:
         alert_msg=f"New device(s) detected: {new_hosts}"
         send_alert("New Device Alert", alert_msg)
-        print(alert_msg)
+        print("New device(s) detected:")
+        for host in new_hosts:
+            print("\n" + host)
         log_changes(new_hosts)
 
 
@@ -159,7 +137,7 @@ def log_vulns(vulns):
 
 
 def main():
-    print(f"[{datetime.now(ZoneInfo(TIME_ZONE))}] Starting SpiNet scan...")
+    print(f"[{datetime.now(ZoneInfo(TIME_ZONE))}] Starting scan...")
     baseline=load_baseline()
     current=scan_network()
     print(f"Found {len(current)} device(s) on the network.")
